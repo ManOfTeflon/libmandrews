@@ -7,7 +7,10 @@ STATIC_INIT("Setting signal handlers") {
 }
 
 void default_handle(int signal_number) {
-  print_trace(ERR);
+  {
+    PIPE(p, ERR);
+    print_trace(p);
+  }
 
   signal(signal_number, SIG_DFL);
   raise(signal_number);

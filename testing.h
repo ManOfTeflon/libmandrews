@@ -24,21 +24,21 @@ class Test {
  public:
   typedef bool (*Function)(Args...);
 
-  void Register(const string& name, Test<Args...>* test);
+  void Register(const std::string& name, Test<Args...>* test);
 
-  inline static map<string, Test<Args...>*>& tests() {
-    if (!_tests) _tests.reset(new map<string, Test<Args...>*>);
+  inline static std::map<std::string, Test<Args...>*>& tests() {
+    if (!_tests) _tests.reset(new std::map<std::string, Test<Args...>*>);
     return *_tests;
   }
 
   virtual bool operator()(Args... args) { return false; }
 
  protected:
-  Test(const string& alias, Function test);
+  Test(const std::string& alias, Function test);
 
   bool (*_test)(Args...);
-  const string& _alias;
-  static unique_ptr<map<string, Test<Args...>*>> _tests;
+  const std::string& _alias;
+  static std::unique_ptr<std::map<std::string, Test<Args...>*>> _tests;
 };
 
 template <const char* const* A, typename ... Args>
@@ -53,7 +53,7 @@ class NamedTest : public Test<Args...> {
 template<const char* const* A, typename ... Args>
 NamedTest<A, Args...>& Create(bool (*test)(Args...));
 template<typename ... Args>
-bool Run(const string& test, Args... args);
+bool Run(const std::string& test, Args... args);
 bool RunAll();
 
 }  // namespace Tester

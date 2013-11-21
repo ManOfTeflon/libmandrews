@@ -3,7 +3,7 @@
 namespace Tester {
 
 template <typename ... Args>
-unique_ptr<map<string, Test<Args...>*>> Test<Args...>::_tests;
+std::unique_ptr<std::map<std::string, Test<Args...>*>> Test<Args...>::_tests;
 
 template<const char* const* A>
 void handle(int signal_number) {
@@ -14,13 +14,13 @@ void handle(int signal_number) {
 }
 
 template<typename ... Args>
-Test<Args...>::Test(const string& alias, bool (*test)(Args...))
+Test<Args...>::Test(const std::string& alias, bool (*test)(Args...))
     : _test(test), _alias(alias) {
   Register(alias, this);
 }
 
 template<typename ... Args>
-void Test<Args...>::Register(const string& name, Test<Args...>* test) {
+void Test<Args...>::Register(const std::string& name, Test<Args...>* test) {
   D(DBG) << "Registered test: " << name;
   tests()[name] = test;
 }
@@ -49,7 +49,7 @@ NamedTest<A, Args...>& Create(bool (*test)(Args...)) {
 }
 
 template<typename ... Args>
-bool Run(const string& test, Args... args) {
+bool Run(const std::string& test, Args... args) {
   if(Test<Args...>::tests().count(test) == 0) {
     P(BRK) << "Skipped test '\E[0;36m" << test << "\E[0m': Does not exist!";
     return false;

@@ -32,18 +32,18 @@ template<typename T0, typename ... T>
 inline bool parse_arguments(int argc, char** argv, T0& t0, T& ... t) {
   ASSERT_EQ(argc, sizeof...(t) + 2) << "Wrong number of arguments!";
 
-  stringstream ss;
+  std::stringstream ss;
   ss << argv[1];
   ss >> t0;
   return parse_arguments(argc - 1, argv + 1, t...);
 }
 
-inline void print_trace(Channel c) {
+inline void print_trace(logging::Dump& d) {
   const size_t max_depth = 100;
   size_t stack_depth;
   void *stack_addrs[max_depth];
   char **stack_strings;
-  stringstream ss;
+  std::stringstream ss;
 
   stack_depth = backtrace(stack_addrs, max_depth);
   stack_strings = backtrace_symbols(stack_addrs, stack_depth);
@@ -74,16 +74,16 @@ inline void print_trace(Channel c) {
         strncat(function, "()", sz);
         function[sz-1] = '\0';
       }
-      ss << string(stack_strings[i]) << ":" << string(function) << endl;
+      ss << std::string(stack_strings[i]) << ":" << std::string(function) << std::endl;
     }
     else
     {
-      ss << string(stack_strings[i]) << endl;
+      ss << std::string(stack_strings[i]) << std::endl;
     }
     free(function);
   }
   free(stack_strings);
-  P(c) << ss.str();
+  d << ss.str();
 }
 
 #endif  // _UTIL_H_
