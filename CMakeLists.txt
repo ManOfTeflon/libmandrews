@@ -1,7 +1,14 @@
 cmake_minimum_required(VERSION 2.8)
 project(display)
+
+set(CMAKE_C_COMPILER gcc)
 set(CMAKE_CXX_COMPILER g++)
+
+set(CMAKE_C_FLAGS "-O3 -ffast-math -g -Werror")
+set(CMAKE_CXX_FLAGS "-std=c++0x ${CMAKE_C_FLAGS}")
+
 set(CMAKE_EXE_LINKER_FLAGS "-rdynamic")
+
 add_definitions(-x c++ -std=c++11 -g -rdynamic -Wall)
 link_libraries(stdc++)
 add_library(mandrews_static STATIC testing.cpp socket.cpp)
