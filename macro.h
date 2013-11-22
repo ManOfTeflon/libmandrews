@@ -95,18 +95,18 @@ namespace logging {
 
 struct ChannelMetadata {
   Channel channel;
-  std::ostream& os;
+  std::ostream* os;
   const char* color;
 };
 
 constexpr ChannelMetadata channel_map[] = {
-    { OUT, std::cout, "\E[1;35m" },
-    { ERR, std::cerr, "\E[1;31m" },
-    { FTL, std::cerr, "\E[1;31m" },
-    { BRK, std::cerr, "\E[1;31m" },
-    { DBG, std::cout, "\E[1;35m" },
-    { DMY, std::cnul, "\E[0;35m" },
-    { BUF, std::cnul, "\E[0;34m" }
+    { OUT, &std::cout, "\E[1;35m" },
+    { ERR, &std::cerr, "\E[1;31m" },
+    { FTL, &std::cerr, "\E[1;31m" },
+    { BRK, &std::cerr, "\E[1;31m" },
+    { DBG, &std::cout, "\E[1;35m" },
+    { DMY, &std::cnul, "\E[0;35m" },
+    { BUF, &std::cnul, "\E[0;34m" }
 };
 
 inline constexpr ChannelMetadata const* channelMetadata(Channel channel, ChannelMetadata const* map) {
@@ -114,7 +114,7 @@ inline constexpr ChannelMetadata const* channelMetadata(Channel channel, Channel
 }
 
 inline constexpr std::ostream& channelStream(Channel channel) {
-  return channelMetadata(channel, channel_map)->os;
+  return *channelMetadata(channel, channel_map)->os;
 }
 
 inline constexpr const char* channelColor(Channel channel) {
