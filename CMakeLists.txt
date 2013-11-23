@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 2.8)
 project(display)
 
-set(CMAKE_C_COMPILER gcc-4.8)
-set(CMAKE_CXX_COMPILER g++-4.8)
+set(CMAKE_C_COMPILER gcc)
+set(CMAKE_CXX_COMPILER g++)
 
 set(CMAKE_C_FLAGS "-O3 -ffast-math -g -Werror")
 set(CMAKE_CXX_FLAGS "-std=c++0x ${CMAKE_C_FLAGS}")

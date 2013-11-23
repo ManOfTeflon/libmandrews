@@ -317,4 +317,7 @@ class Assert {
 
 }  // namespace logging
 
+template<typename ... Args>
+struct variadic { };
+
 #endif  // MACRO_H_
