@@ -73,23 +73,31 @@ constexpr bool isNull(char ary[]) {
   return ary;
 }
 
+template<bool FTL = false>
 class NulStreambuf : public std::streambuf {
     char dummyBuffer[64];
 protected:
     virtual int overflow( int c ) {
+        assert(!FTL);
         setp( dummyBuffer, dummyBuffer + sizeof( dummyBuffer ) ) ;
         return (c == EOF) ? '\0' : c ;
     }
 };
 
-class NulOStream : public NulStreambuf, public std::ostream {
+class NulOStream : public NulStreambuf<false>, public std::ostream {
 public:
     NulOStream() : std::ostream( this ) {}
+};
+
+class FtlOStream : public NulStreambuf<true>, public std::ostream {
+public:
+    FtlOStream() : std::ostream( this ) {}
 };
 
 }
 
 namespace std { static ::logging::NulOStream cnul; }
+namespace std { static ::logging::FtlOStream cftl; }
 
 namespace logging {
 
@@ -106,15 +114,15 @@ constexpr ChannelMetadata channel_map[] = {
     { BRK, &std::cerr, "\E[1;31m" },
     { DBG, &std::cout, "\E[1;35m" },
     { DMY, &std::cnul, "\E[0;35m" },
-    { BUF, &std::cnul, "\E[0;34m" }
+    { BUF, &std::cftl, "\E[0;34m" }
 };
 
 inline constexpr ChannelMetadata const* channelMetadata(Channel channel, ChannelMetadata const* map) {
   return channel == map->channel ? map : channelMetadata(channel, map + 1);
 }
 
-inline constexpr std::ostream& channelStream(Channel channel) {
-  return *channelMetadata(channel, channel_map)->os;
+inline constexpr std::ostream* channelStream(Channel channel) {
+  return channelMetadata(channel, channel_map)->os;
 }
 
 inline constexpr const char* channelColor(Channel channel) {
@@ -163,8 +171,8 @@ class Dump {
   Dump(Channel channel, const std::string& file, int line) :
     channel_(channel),
     file_(file),
-    color_(channelColor(channel)),
     line_(line),
+    color_(channelColor(channel)),
     os_(channelStream(channel))
   {
     assert(channel != BUF);
@@ -173,12 +181,25 @@ class Dump {
   Dump(std::ostream& os, const std::string& file, int line) :
     channel_(BUF),
     file_(file),
-    color_(channelColor(BUF)),
     line_(line),
-    os_(os) { }
+    color_(channelColor(BUF)),
+    os_(&os) { }
 
   virtual ~Dump() {
     flush();
+  }
+
+  template<Channel C>
+  inline void channel() {
+      channel_ = C;
+      color_ = channelColor(C);
+      os_ = channelStream(C);
+  }
+
+  inline void os(std::ostream& os) {
+      channel_ = BUF;
+      color_ = channelColor(BUF);
+      os_ = &os;
   }
 
   void flush() {
@@ -236,7 +257,7 @@ class Dump {
     prompt << color_ << prefix << color_ << " (\E[1;36m"
         << filename << "\E[0;35m:\E[1;36m" << line_
         << color_ << ")\E[0m";
-    Print(os_, prefix.size(), prompt.str());
+    Print(*os_, prefix.size(), prompt.str());
   }
 
   void Print(std::ostream& stream, int prefix, std::string prompt) {
@@ -253,12 +274,12 @@ class Dump {
     }
   }
 
-  const Channel channel_;
+  Channel channel_;
   const std::string file_;
-  const std::string color_;
   const int line_;
+  std::string color_;
   std::stringstream ss_;
-  std::ostream& os_;
+  std::ostream* os_;
 };
 
 class Assert {

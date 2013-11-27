@@ -65,7 +65,7 @@ bool RunAll();
     extern const char* const name = alias; \
     static bool body(__VA_ARGS__); \
     auto Run = ::Tester::Create<&name>(&body); \
-    PIPE(buffer, BUF); \
+    PIPE(buffer, DMY); \
     } \
     bool n::body(__VA_ARGS__)
 
