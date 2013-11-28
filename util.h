@@ -12,6 +12,7 @@ const unsigned long long NS_PER_SEC = 1000000000;
 const unsigned long long US_PER_SEC = 1000000;
 const unsigned long long MS_PER_SEC = 1000;
 
+// Returns time in microseconds
 inline unsigned long now() {
   struct timespec time;
   clock_gettime(CLOCK_MONOTONIC, &time);

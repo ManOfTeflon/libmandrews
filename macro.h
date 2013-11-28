@@ -48,17 +48,19 @@ const std::string endl = "\n";
 #define P(channel) ::logging::Dump(channel, __FILE__, __LINE__)
 #define PIPE(name, channel)  ::logging::Dump name(channel, __FILE__, __LINE__)
 
+#define DISABLED_STREAM if(false) std::cftl
+
 #ifdef DEBUG
 #define D(channel) P(channel)
 #else
-#define D(channel) if(false) std::cout
+#define D(channel) DISABLED_STREAM
 #endif
 
 #ifdef CAUTIOUS
 #define ASSERT(condition) \
-  ::logging::Assert(condition, #condition, __FILE__, __LINE__)
+    if(!condition) D(BRK) << "Failed assertion: " #condition << ::logging::endl
 #else
-#define ASSERT(condition) if(false) std::cout
+#define ASSERT(condition) DISABLED_STREAM
 #endif
 
 #define CHOICE(t, p, o) \
@@ -282,39 +284,6 @@ class Dump {
   std::ostream* os_;
 };
 
-class Assert {
- public:
-  explicit Assert(bool condition, const std::string& msg,
-                  const std::string& file, int line) :
-    condition_(condition),
-    msg_(msg),
-    file_(file),
-    line_(line) {
-  }
-
-  virtual ~Assert() {
-    if(!condition_) {
-      if(!ss_.str().empty()) {
-        Dump(ERR, file_, line_) << "Assertion failed: " << ss_.str();
-      }
-      Dump(BRK, file_, line_) << "False condition: " << msg_;
-    }
-  }
-
-  template<class T>
-  Assert& operator<<(const T& t) {
-    ss_ << t;
-    return *this;
-  }
-
- private:
-  const bool condition_;
-  const std::string& msg_;
-  const std::string& file_;
-  int line_;
-  std::stringstream ss_;
-};
-
 #define STATIC_CALL(msg) \
     namespace { \
     namespace CONCAT(static_init__, __LINE__) { \
@@ -323,15 +292,16 @@ class Assert {
       Init() { \
         const ::std::string message = (msg); \
         if(!message.empty()) D(DBG) << "Running " << message; \
-        Run(); \
-        if(!message.empty()) D(DBG) << message << " successful."; \
+        bool success = Run(); \
+        if(!message.empty() && success) D(DBG) << message << " successful."; \
+        if(!message.empty() && !success) D(BRK) << message << " failed!"; \
       } \
-      void Run(); \
+      bool Run(); \
     }; \
-    extern Init init; \
+    Init init; \
     } \
     } \
-    void CONCAT(static_init__, __LINE__)::Init::Run()
+    bool CONCAT(static_init__, __LINE__)::Init::Run()
 
 #define STATIC_INIT(msg) \
     STATIC_CALL("Static Initialization(\E[0;36m" msg "\E[0m)")
