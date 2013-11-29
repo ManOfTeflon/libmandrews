@@ -14,10 +14,27 @@ namespace Tester {
 
 typedef void (*Handler)(int);
 
-void default_handle(int signal_number);
+static void default_handle(int signal_number) {
+  {
+    PIPE(p, ERR);
+    print_trace(p);
+  }
+
+  signal(signal_number, SIG_DFL);
+  raise(signal_number);
+}
+
 template <const char* const* A>
 static void handle(int signal_number);
-void SetHandler(Handler handle);
+
+inline void SetHandler(Handler handle) {
+  signal(SIGABRT, handle);
+  signal(SIGFPE,  handle);
+  signal(SIGILL,  handle);
+  signal(SIGINT,  handle);
+  signal(SIGSEGV, handle);
+  signal(SIGTERM, handle);
+}
 
 template <typename ... Args>
 class Test {
@@ -54,7 +71,14 @@ template<const char* const* A, typename ... Args>
 NamedTest<A, Args...>& Create(bool (*test)(Args...));
 template<typename ... Args>
 bool Run(const std::string& test, Args... args);
-bool RunAll();
+inline bool RunAll() {
+  bool success = true;
+  for(auto test : Test<>::tests()) {
+    success &= (*(test.second))();
+  }
+  return success;
+}
+
 
 }  // namespace Tester
 
