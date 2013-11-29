@@ -44,13 +44,12 @@ inline void print_trace(logging::Dump& d) {
   size_t stack_depth;
   void *stack_addrs[max_depth];
   char **stack_strings;
-  std::stringstream ss;
 
   stack_depth = backtrace(stack_addrs, max_depth);
   stack_strings = backtrace_symbols(stack_addrs, stack_depth);
 
   for (size_t i = 1; i < stack_depth; i++) {
-    size_t sz = 200;
+    size_t sz = 1000;
     char *function = static_cast<char*>(malloc(sz));
     char *begin = 0, *end = 0;
     for (char *j = stack_strings[i]; *j; ++j) {
@@ -75,16 +74,15 @@ inline void print_trace(logging::Dump& d) {
         strncat(function, "()", sz);
         function[sz-1] = '\0';
       }
-      ss << std::string(stack_strings[i]) << ":" << std::string(function) << std::endl;
+      d << stack_strings[i] << ":" << function << logging::endl;
     }
     else
     {
-      ss << std::string(stack_strings[i]) << std::endl;
+      d << stack_strings[i] << logging::endl;
     }
     free(function);
   }
   free(stack_strings);
-  d << ss.str();
 }
 
 #endif  // _UTIL_H_

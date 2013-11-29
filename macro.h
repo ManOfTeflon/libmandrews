@@ -187,6 +187,14 @@ class Dump {
     color_(channelColor(BUF)),
     os_(&os) { }
 
+  Dump(const Dump& other) :
+    channel_(other.channel_),
+    file_(other.file_),
+    line_(other.line_),
+    color_(other.color_),
+    ss_(other.ss_.str()),
+    os_(other.os_) { }
+
   virtual ~Dump() {
     flush();
   }
@@ -252,7 +260,7 @@ class Dump {
     return *this;
   }
 
- private:
+ protected:
   void Output(const std::string& prefix) {
     std::string filename = file_.substr(file_.find_last_of("/") + 1);
     std::stringstream prompt;
@@ -283,6 +291,17 @@ class Dump {
   std::stringstream ss_;
   std::ostream* os_;
 };
+
+struct Capture : public Dump {
+    inline Capture(const std::string& file, int line) : Dump(std::cnul, file, line) { }
+    inline bool expect(const std::string& expected) {
+        return !expected.compare(ss_.str());
+    }
+    inline operator bool() { return true; }
+};
+
+#define CAPTURE(stream) \
+    if (::logging::Capture stream = ::logging::Capture(__FILE__, __LINE__))
 
 #define STATIC_CALL(msg) \
     namespace { \
