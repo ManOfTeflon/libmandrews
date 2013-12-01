@@ -199,19 +199,6 @@ class Dump {
     flush();
   }
 
-  template<Channel C>
-  inline void channel() {
-      channel_ = C;
-      color_ = channelColor(C);
-      os_ = channelStream(C);
-  }
-
-  inline void os(std::ostream& os) {
-      channel_ = BUF;
-      color_ = channelColor(BUF);
-      os_ = &os;
-  }
-
   void flush() {
     switch(channel_) {
       case OUT:
@@ -284,24 +271,22 @@ class Dump {
     }
   }
 
-  Channel channel_;
+  const Channel channel_;
   const std::string file_;
   const int line_;
-  std::string color_;
+  const std::string color_;
   std::stringstream ss_;
   std::ostream* os_;
 };
 
 struct Capture : public Dump {
-    inline Capture(const std::string& file, int line) : Dump(std::cnul, file, line) { }
+    Capture(Channel channel, const std::string& file, int line) : Dump(channel, file, line) { }
+    Capture(std::ostream& os, const std::string& file, int line) : Dump(os, file, line) { }
+
     inline bool expect(const std::string& expected) {
         return !expected.compare(ss_.str());
     }
-    inline operator bool() { return true; }
 };
-
-#define CAPTURE(stream) \
-    if (::logging::Capture stream = ::logging::Capture(__FILE__, __LINE__))
 
 #define STATIC_CALL(msg) \
     namespace { \
@@ -326,6 +311,21 @@ struct Capture : public Dump {
     STATIC_CALL("Static Initialization(\E[0;36m" msg "\E[0m)")
 
 }  // namespace logging
+
+template<typename T>
+struct SingleIter {
+    template<typename ... Args>
+    SingleIter(Args...args) : t{ T(args...) } { }
+
+    T* begin() { return t; }
+    T* end() { return t + 1; }
+
+private:
+    T t[1];
+};
+
+#define CAPTURE(name, stream) \
+    for (::logging::Capture& name : SingleIter<::logging::Capture>(stream, __FILE__, __LINE__))
 
 template<typename ... Args>
 struct variadic { };
