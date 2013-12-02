@@ -8,7 +8,7 @@
 #include "util.h"
 
 template<typename ... Args>
-class Case;
+class TemplatedCase;
 
 template<typename ... Args>
 class Arguments {
@@ -17,10 +17,11 @@ protected:
         CallHelper(list, func);
     }
     void Add() { }
+    size_t Num() const { return 1; }
 
 protected:
     template<typename ... A>
-    friend class Case;
+    friend class TemplatedCase;
     Arguments() { }
 
     template<typename F, typename ... A>
@@ -40,10 +41,11 @@ public:
     void Call(int list, std::function<void(T, Args...)> func) {
         CallHelper(list, func);
     }
+    size_t Num() const { return _m.size(); }
 
 protected:
     template<typename ... A>
-    friend class Case;
+    friend class TemplatedCase;
     Arguments() { }
 
     template<typename F, typename ... A>
@@ -53,30 +55,45 @@ protected:
     std::vector<T> _m;
 };
 
+struct Case {
+    virtual const Case& Call(int i) const = 0;
+    virtual size_t Num() const = 0;
+    const Case& CallAll() const {
+        int n = Num();
+        for (int i = 0; i < n; ++i) {
+            Call(i);
+        }
+        return *this;
+    }
+};
+
 template<typename ... Args>
-class Case {
+class TemplatedCase : public Case {
 public:
-    Case() { }
-    Case& Call(int i) {
+    TemplatedCase() { }
+    virtual const Case& Call(int i) const {
         _args.Call(i, _func);
         return *this;
     }
-    Case& operator()(Args... args) {
+    virtual size_t Num() const {
+        return _args.Num();
+    }
+    TemplatedCase& operator()(Args... args) {
         _args.Add(args...);
         return *this;
     }
-    Case& operator<<(std::function<void(Args...)> func) {
+    TemplatedCase* operator<<(const std::function<void(Args...)>& func) {
         _func = func;
-        return *this;
+        return this;
     }
 private:
-    std::function<void(Args...)> _func;
-    Arguments<Args...> _args;
+    mutable std::function<void(Args...)> _func;
+    mutable Arguments<Args...> _args;
 };
 
 template<typename Lambda, typename ... Args>
-Case<Args...> createCase(void (Lambda::*args)(Args...) const) {
-    return Case<Args...>();
+TemplatedCase<Args...> createCase(void (Lambda::*args)(Args...) const) {
+    return TemplatedCase<Args...>();
 }
 
 template<typename Lambda>
@@ -88,6 +105,14 @@ template<typename Lambda>
 typename LambdaFunc<Lambda>::func lambdaFunc(Lambda lambda) {
     return &Lambda::operator();
 }
+
+struct Run {
+    Run(std::initializer_list<Case*> cases) {
+        for (Case* c : cases) {
+            c->CallAll();
+        }
+    }
+};
 
 #define FIRST_(first, ...) \
     first
@@ -129,5 +154,8 @@ a24 a25 a26 a27 a28 a29 a30 a31 a32 a33 a34 a35 a36 a37 a38 a39 a40 a41 a42 a43
 
 #define CASE_YES(name, params, ...) \
     createCase(lambdaFunc([] params { }))APPEND(__VA_ARGS__) << [] params 
+
+#define RUN(name) \
+    Run name = 
 
 #endif  // __CASES_H_
