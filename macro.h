@@ -23,9 +23,7 @@
 #define INF			32767
 
 #define COMPILE_ASSERT(condition) \
-    do { \
-        enum { assert_static__ = 1/(condition) }; \
-    } while (0)
+    enum { assert_static__ = 1/(condition) }
 #define ILLEGAL_DEFAULT() default: \
     P(FTL) << "Illegal default case reached"
 

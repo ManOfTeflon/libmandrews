@@ -9,6 +9,7 @@
 #include <time.h>
 
 #include "util.h"
+#include "cases.h"
 
 namespace Tester {
 
