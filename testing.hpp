@@ -27,18 +27,15 @@ void Test<Args...>::Register(const std::string& name, Test<Args...>* test) {
 
 template<const char* const* A, typename ... Args>
 bool NamedTest<A, Args...>::operator()(Args... args) {
-  P(OUT) << "Running test '\E[0;36m" << *A << "'\E[0m";
-  SetHandler(::Tester::handle<A>);
-  unsigned long start = now();
-  bool success = this->_test(args...);
-  Tester::SetHandler(default_handle);
-  if (success) {
-    P(OUT) << "Test '\E[0;36m" << *A << "\E[0m' succeeded in \E[1;34m"
-      << ((double)(now() - start) / 1000) << "\E[0m milliseconds!";
+  TemplatedCase<Args...> c(*A);
+  c["(args...)"](args...) * [this](Args ... args) { this->_test(args...); } % 0;
+  bool success;
+  c.Fork(0);
+  if (Run::Parent()) {
+      success = c.Wait(0);
+      printf("\n");
   } else {
-    P(BRK) << "Test '\E[0;36m" << *A <<
-      "\E[0m' \E[1;31mfailed\E[0m in \E[1;34m" <<
-      ((double)(now() - start) / 1000) << "\E[0m milliseconds!";
+      exit(0);
   }
   return success;
 }

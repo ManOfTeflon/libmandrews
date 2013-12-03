@@ -9,7 +9,6 @@
 #include <time.h>
 
 #include "util.h"
-#include "cases.h"
 
 namespace Tester {
 
@@ -106,6 +105,7 @@ inline bool RunAll() {
 #define EXPECT_NOT(stream, out) \
     if (stream.expect(#out)) return false;
 
+#include "cases.h"
 #include "testing.hpp"
 
 #endif  // TESTS_H_

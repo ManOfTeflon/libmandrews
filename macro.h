@@ -1,11 +1,5 @@
-#ifndef MACRO_H_
-#define MACRO_H_
-
-#include <iostream>
-#include <sstream>
-#include <set>
-#include <assert.h>
-#include <stdlib.h>
+#ifndef __MACRO_FOR_H
+#define __MACRO_FOR_H
 
 #define SUBSETS(i, s)		for(uint64 i = 0ull, null_flag = 1ull; \
                             i || null_flag; \
@@ -22,310 +16,87 @@
 
 #define INF			32767
 
-#define COMPILE_ASSERT(condition) \
-    enum { assert_static__ = 1/(condition) }
-#define ILLEGAL_DEFAULT() default: \
-    P(FTL) << "Illegal default case reached"
-
 #define ARRAYSIZE(ary) (sizeof(ary) / sizeof(*ary))
 
 #define CONCAT2(x, y) x ## y
 #define CONCAT(x, y) CONCAT2(x, y)
 
-enum Channel { OUT, ERR, FTL, BRK, DBG, DMY, BUF };
+#define FIRST_(first, ...) \
+    first
+#define FIRST(...) \
+    FIRST_(__VA_ARGS__)
 
-namespace logging {
+#define APPEND(...) \
+    APPEND_(__VA_ARGS__,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,)
+#define APPEND_(a1, a2, a3, a4, a5, a6, a7, a8, a9, \
+                  a10, a11, a12, a13, a14, a15, a16, a17, a18, \
+                  a19, a20, a21, a22, a23, a24, a25, a26, a27, \
+                  a28, a29, a30, a31, a32, a33, a34, a35, a36, \
+                  a37, a38, a39, a40, a41, a42, a43, a44, a45, ...) \
+a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 a13 a14 a15 \
+a16 a17 a18 a19 a20 a21 a22 a23 a24 a25 a26 a27 a28 a29 a30 \
+a31 a32 a33 a34 a35 a36 a37 a38 a39 a40 a41 a42 a43 a44 a44
 
-const std::string endl = "\n";
+#define ARG_45(a1, a2, a3, a4, a5, a6, a7, a8, a9, \
+                  a10, a11, a12, a13, a14, a15, a16, a17, a18, \
+                  a19, a20, a21, a22, a23, a24, a25, a26, a27, \
+                  a28, a29, a30, a31, a32, a33, a34, a35, a36, \
+                  a37, a38, a39, a40, a41, a42, a43, a44, a45, ...) a45
 
-#define DEBUG
-#define CAUTIOUS
+#define HAS_ARGS(...) \
+    ARG_45(dummy, ##__VA_ARGS__, YES, YES, YES, YES, YES, YES, YES, YES, YES, YES, YES, YES, YES, YES, YES, YES, YES, YES, YES, YES, YES, YES, YES, YES, YES, YES, YES, YES, YES, YES, YES, YES, YES, YES, YES, YES, YES, YES, YES, YES, YES, YES, YES, NO)
 
-#define V(v)  #v << ": " << v << " "
+#define NUM_ARGS(...) \
+    ARG_45(dummy, ##__VA_ARGS__, 43 , 42 , 41 , 40 , 39 , 38 , 37 , 36 , 35 , 34 , 33 , 32 , 31 , 30 , 29 , 28 , 27 , 26 , 25 , 24 , 23 , 22 , 21 , 20 , 19 , 18 , 17 , 16 , 15 , 14 , 13 , 12 , 11 , 10 , 9 , 8 , 7 , 6 , 5 , 4 , 3 , 2 , 1 , 0)
 
-#define P(channel) ::logging::Dump(channel, __FILE__, __LINE__)
-#define PIPE(name, channel)  ::logging::Dump name(channel, __FILE__, __LINE__)
+#define MAP_REDUCE(MAP, REDUCE, ...) \
+    CONCAT(MAP_REDUCE_, NUM_ARGS(__VA_ARGS__))(MAP, REDUCE, __VA_ARGS__)
 
-#define DISABLED_STREAM if(false) std::cftl
+#define MAP_REDUCE_0(...)
+#define MAP_REDUCE_1(MAP, REDUCE, a0, ...) MAP(a0)
+#define MAP_REDUCE_2(MAP, REDUCE, a0, ...) REDUCE(MAP(a0),  MAP_REDUCE_1(MAP, REDUCE, __VA_ARGS__))
+#define MAP_REDUCE_3(MAP, REDUCE, a0, ...) REDUCE(MAP(a0),  MAP_REDUCE_2(MAP, REDUCE, __VA_ARGS__))
+#define MAP_REDUCE_4(MAP, REDUCE, a0, ...) REDUCE(MAP(a0),  MAP_REDUCE_3(MAP, REDUCE, __VA_ARGS__))
+#define MAP_REDUCE_5(MAP, REDUCE, a0, ...) REDUCE(MAP(a0),  MAP_REDUCE_4(MAP, REDUCE, __VA_ARGS__))
+#define MAP_REDUCE_6(MAP, REDUCE, a0, ...) REDUCE(MAP(a0),  MAP_REDUCE_5(MAP, REDUCE, __VA_ARGS__))
+#define MAP_REDUCE_7(MAP, REDUCE, a0, ...) REDUCE(MAP(a0),  MAP_REDUCE_6(MAP, REDUCE, __VA_ARGS__))
+#define MAP_REDUCE_8(MAP, REDUCE, a0, ...) REDUCE(MAP(a0),  MAP_REDUCE_7(MAP, REDUCE, __VA_ARGS__))
+#define MAP_REDUCE_9(MAP, REDUCE, a0, ...) REDUCE(MAP(a0),  MAP_REDUCE_8(MAP, REDUCE, __VA_ARGS__))
+#define MAP_REDUCE_10(MAP, REDUCE, a0, ...) REDUCE(MAP(a0), MAP_REDUCE_9(MAP, REDUCE, __VA_ARGS__))
+#define MAP_REDUCE_11(MAP, REDUCE, a0, ...) REDUCE(MAP(a0), MAP_REDUCE_10(MAP, REDUCE, __VA_ARGS__))
+#define MAP_REDUCE_12(MAP, REDUCE, a0, ...) REDUCE(MAP(a0), MAP_REDUCE_11(MAP, REDUCE, __VA_ARGS__))
+#define MAP_REDUCE_13(MAP, REDUCE, a0, ...) REDUCE(MAP(a0), MAP_REDUCE_12(MAP, REDUCE, __VA_ARGS__))
+#define MAP_REDUCE_14(MAP, REDUCE, a0, ...) REDUCE(MAP(a0), MAP_REDUCE_13(MAP, REDUCE, __VA_ARGS__))
+#define MAP_REDUCE_15(MAP, REDUCE, a0, ...) REDUCE(MAP(a0), MAP_REDUCE_14(MAP, REDUCE, __VA_ARGS__))
+#define MAP_REDUCE_16(MAP, REDUCE, a0, ...) REDUCE(MAP(a0), MAP_REDUCE_15(MAP, REDUCE, __VA_ARGS__))
+#define MAP_REDUCE_17(MAP, REDUCE, a0, ...) REDUCE(MAP(a0), MAP_REDUCE_16(MAP, REDUCE, __VA_ARGS__))
+#define MAP_REDUCE_18(MAP, REDUCE, a0, ...) REDUCE(MAP(a0), MAP_REDUCE_17(MAP, REDUCE, __VA_ARGS__))
+#define MAP_REDUCE_19(MAP, REDUCE, a0, ...) REDUCE(MAP(a0), MAP_REDUCE_18(MAP, REDUCE, __VA_ARGS__))
+#define MAP_REDUCE_20(MAP, REDUCE, a0, ...) REDUCE(MAP(a0), MAP_REDUCE_19(MAP, REDUCE, __VA_ARGS__))
+#define MAP_REDUCE_21(MAP, REDUCE, a0, ...) REDUCE(MAP(a0), MAP_REDUCE_20(MAP, REDUCE, __VA_ARGS__))
+#define MAP_REDUCE_22(MAP, REDUCE, a0, ...) REDUCE(MAP(a0), MAP_REDUCE_21(MAP, REDUCE, __VA_ARGS__))
+#define MAP_REDUCE_23(MAP, REDUCE, a0, ...) REDUCE(MAP(a0), MAP_REDUCE_22(MAP, REDUCE, __VA_ARGS__))
+#define MAP_REDUCE_24(MAP, REDUCE, a0, ...) REDUCE(MAP(a0), MAP_REDUCE_23(MAP, REDUCE, __VA_ARGS__))
+#define MAP_REDUCE_25(MAP, REDUCE, a0, ...) REDUCE(MAP(a0), MAP_REDUCE_24(MAP, REDUCE, __VA_ARGS__))
+#define MAP_REDUCE_26(MAP, REDUCE, a0, ...) REDUCE(MAP(a0), MAP_REDUCE_25(MAP, REDUCE, __VA_ARGS__))
+#define MAP_REDUCE_27(MAP, REDUCE, a0, ...) REDUCE(MAP(a0), MAP_REDUCE_26(MAP, REDUCE, __VA_ARGS__))
+#define MAP_REDUCE_28(MAP, REDUCE, a0, ...) REDUCE(MAP(a0), MAP_REDUCE_27(MAP, REDUCE, __VA_ARGS__))
+#define MAP_REDUCE_29(MAP, REDUCE, a0, ...) REDUCE(MAP(a0), MAP_REDUCE_28(MAP, REDUCE, __VA_ARGS__))
+#define MAP_REDUCE_30(MAP, REDUCE, a0, ...) REDUCE(MAP(a0), MAP_REDUCE_29(MAP, REDUCE, __VA_ARGS__))
+#define MAP_REDUCE_31(MAP, REDUCE, a0, ...) REDUCE(MAP(a0), MAP_REDUCE_30(MAP, REDUCE, __VA_ARGS__))
+#define MAP_REDUCE_32(MAP, REDUCE, a0, ...) REDUCE(MAP(a0), MAP_REDUCE_31(MAP, REDUCE, __VA_ARGS__))
+#define MAP_REDUCE_33(MAP, REDUCE, a0, ...) REDUCE(MAP(a0), MAP_REDUCE_32(MAP, REDUCE, __VA_ARGS__))
+#define MAP_REDUCE_34(MAP, REDUCE, a0, ...) REDUCE(MAP(a0), MAP_REDUCE_33(MAP, REDUCE, __VA_ARGS__))
+#define MAP_REDUCE_35(MAP, REDUCE, a0, ...) REDUCE(MAP(a0), MAP_REDUCE_34(MAP, REDUCE, __VA_ARGS__))
+#define MAP_REDUCE_36(MAP, REDUCE, a0, ...) REDUCE(MAP(a0), MAP_REDUCE_35(MAP, REDUCE, __VA_ARGS__))
+#define MAP_REDUCE_37(MAP, REDUCE, a0, ...) REDUCE(MAP(a0), MAP_REDUCE_36(MAP, REDUCE, __VA_ARGS__))
+#define MAP_REDUCE_38(MAP, REDUCE, a0, ...) REDUCE(MAP(a0), MAP_REDUCE_37(MAP, REDUCE, __VA_ARGS__))
+#define MAP_REDUCE_39(MAP, REDUCE, a0, ...) REDUCE(MAP(a0), MAP_REDUCE_38(MAP, REDUCE, __VA_ARGS__))
+#define MAP_REDUCE_40(MAP, REDUCE, a0, ...) REDUCE(MAP(a0), MAP_REDUCE_39(MAP, REDUCE, __VA_ARGS__))
+#define MAP_REDUCE_41(MAP, REDUCE, a0, ...) REDUCE(MAP(a0), MAP_REDUCE_40(MAP, REDUCE, __VA_ARGS__))
+#define MAP_REDUCE_42(MAP, REDUCE, a0, ...) REDUCE(MAP(a0), MAP_REDUCE_41(MAP, REDUCE, __VA_ARGS__))
+#define MAP_REDUCE_43(MAP, REDUCE, a0, ...) REDUCE(MAP(a0), MAP_REDUCE_42(MAP, REDUCE, __VA_ARGS__))
 
-#ifdef DEBUG
-#define D(channel) P(channel)
-#else
-#define D(channel) DISABLED_STREAM
-#endif
+#include "output.h"
 
-#ifdef CAUTIOUS
-#define ASSERT(condition) \
-    if(!condition) D(BRK) << "Failed assertion: " #condition << ::logging::endl
-#else
-#define ASSERT(condition) DISABLED_STREAM
-#endif
-
-#define CHOICE(t, p, o) \
-  ::logging::Choice<t>((p), (o), (::logging::isNull(o)) ? ARRAYSIZE(o) : 0)
-#define PRINT(x)  D(OUT) << (#x ": ") << x
-#define ASSERT_EQ(x, y) ASSERT((x) == (y)) << (x) << " vs. " << (y) \
-    << ::logging::endl
-#define ASSERT_NE(x, y) ASSERT((x) != (y)) << (x) << " vs. " << (y) \
-    << ::logging::endl
-
-constexpr bool isNull(char ary[]) {
-  return ary;
-}
-
-template<bool FTL = false>
-class NulStreambuf : public std::streambuf {
-    char dummyBuffer[64];
-protected:
-    virtual int overflow( int c ) {
-        assert(!FTL);
-        setp( dummyBuffer, dummyBuffer + sizeof( dummyBuffer ) ) ;
-        return (c == EOF) ? '\0' : c ;
-    }
-};
-
-class NulOStream : public NulStreambuf<false>, public std::ostream {
-public:
-    NulOStream() : std::ostream( this ) {}
-};
-
-class FtlOStream : public NulStreambuf<true>, public std::ostream {
-public:
-    FtlOStream() : std::ostream( this ) {}
-};
-
-}
-
-namespace std { static ::logging::NulOStream cnul; }
-namespace std { static ::logging::FtlOStream cftl; }
-
-namespace logging {
-
-struct ChannelMetadata {
-  Channel channel;
-  std::ostream* os;
-  const char* color;
-};
-
-constexpr ChannelMetadata channel_map[] = {
-    { OUT, &std::cout, "\E[1;35m" },
-    { ERR, &std::cerr, "\E[1;31m" },
-    { FTL, &std::cerr, "\E[1;31m" },
-    { BRK, &std::cerr, "\E[1;31m" },
-    { DBG, &std::cout, "\E[1;35m" },
-    { DMY, &std::cnul, "\E[0;35m" },
-    { BUF, &std::cftl, "\E[0;34m" }
-};
-
-inline constexpr ChannelMetadata const* channelMetadata(Channel channel, ChannelMetadata const* map) {
-  return channel == map->channel ? map : channelMetadata(channel, map + 1);
-}
-
-inline constexpr std::ostream* channelStream(Channel channel) {
-  return channelMetadata(channel, channel_map)->os;
-}
-
-inline constexpr const char* channelColor(Channel channel) {
-  return channelMetadata(channel, channel_map)->color;
-}
-
-template<typename T>
-class Choice {
- public:
-  Choice<T>(const std::string& prompt, T* options, int num_options) :
-      options_(options, options + num_options) {
-    std::cout << prompt << " (";
-    for (int i = 0; i < num_options; ++i) {
-      if (i) std::cout << "/";
-      std::cout << options[i];
-    }
-    std::cout << ") ";
-  }
-
-  Choice<T>& operator>>(T& t) {
-    do {
-      std::cin >> t;
-    } while (options_.find(t) == options_.end());
-    return *this;
-  }
-
- private:
-  std::set<T> options_;
-};
-
-class Prompt {
- public:
-  Prompt(const std::string& prompt) {
-    std::cout << prompt << " ";
-  }
-
-  template<typename T>
-  Prompt& operator>>(T& t) {
-    std::cin >> t;
-    return *this;
-  }
-};
-
-class Dump {
- public:
-  Dump(Channel channel, const std::string& file, int line) :
-    channel_(channel),
-    file_(file),
-    line_(line),
-    color_(channelColor(channel)),
-    os_(channelStream(channel))
-  {
-    assert(channel != BUF);
-  }
-
-  Dump(std::ostream& os, const std::string& file, int line) :
-    channel_(BUF),
-    file_(file),
-    line_(line),
-    color_(channelColor(BUF)),
-    os_(&os) { }
-
-  Dump(const Dump& other) :
-    channel_(other.channel_),
-    file_(other.file_),
-    line_(other.line_),
-    color_(other.color_),
-    ss_(other.ss_.str()),
-    os_(other.os_) { }
-
-  virtual ~Dump() {
-    flush();
-  }
-
-  void flush() {
-    switch(channel_) {
-      case OUT:
-        Output("OUT");
-        break;
-      case ERR:
-        Output("ERR");
-        break;
-      case FTL:
-        Output("FTL");
-        abort();
-        break;
-      case BRK:
-       {
-        Output("BRK");
-        char choice;
-        char options[] = {'y', 'n'};
-        CHOICE(char, "Continue?", options) >> choice;
-        if (choice == 'n') abort();
-        break;
-       }
-      case BUF:
-        Output("BUF");
-        break;
-      case DBG:
-#ifdef DEBUG
-        Output("DBG");
-        break;
-#endif
-      case DMY:
-      default:
-        break;
-    }
-    ss_.clear();
-    ss_.str(std::string());
-  }
-
-  template<class T>
-  Dump& operator<<(const T& t) {
-    ss_ << t;
-    return *this;
-  }
-
-  Dump& operator>>(std::string& s) {
-    s = ss_.str();
-    return *this;
-  }
-
- protected:
-  void Output(const std::string& prefix) {
-    std::string filename = file_.substr(file_.find_last_of("/") + 1);
-    std::stringstream prompt;
-    prompt << color_ << prefix << color_ << " (\E[1;36m"
-        << filename << "\E[0;35m:\E[1;36m" << line_
-        << color_ << ")\E[0m";
-    Print(*os_, prefix.size(), prompt.str());
-  }
-
-  void Print(std::ostream& stream, int prefix, std::string prompt) {
-    const int line_length = 128;
-    char buffer[line_length + 1] = { '\0' };
-    const std::string carat = "\E[1;32m>\E[0m ";
-    bool first = true;
-    while(ss_.getline(buffer, line_length + 1).gcount()) {
-      stream << prompt << (first ? carat : "  ") << buffer << std::endl;
-      if (first) {
-        prompt = prompt.replace(0, prefix + color_.size(), std::string(prefix, ' '));
-        first = false;
-      }
-    }
-  }
-
-  const Channel channel_;
-  const std::string file_;
-  const int line_;
-  const std::string color_;
-  std::stringstream ss_;
-  std::ostream* os_;
-};
-
-struct Capture : public Dump {
-    Capture(Channel channel, const std::string& file, int line) : Dump(channel, file, line) { }
-    Capture(std::ostream& os, const std::string& file, int line) : Dump(os, file, line) { }
-
-    inline bool expect(const std::string& expected) {
-        return !expected.compare(ss_.str());
-    }
-};
-
-#define STATIC_CALL(msg) \
-    namespace { \
-    namespace CONCAT(static_init__, __LINE__) { \
-    class Init { \
-     public: \
-      Init() { \
-        const ::std::string message = (msg); \
-        if(!message.empty()) D(DBG) << "Running " << message; \
-        bool success = Run(); \
-        if(!message.empty() && success) D(DBG) << message << " successful."; \
-        if(!message.empty() && !success) D(BRK) << message << " failed!"; \
-      } \
-      bool Run(); \
-    }; \
-    Init init; \
-    } \
-    } \
-    bool CONCAT(static_init__, __LINE__)::Init::Run()
-
-#define STATIC_INIT(msg) \
-    STATIC_CALL("Static Initialization(\E[0;36m" msg "\E[0m)")
-
-}  // namespace logging
-
-template<typename T>
-struct SingleIter {
-    template<typename ... Args>
-    SingleIter(Args...args) : t{ T(args...) } { }
-
-    T* begin() { return t; }
-    T* end() { return t + 1; }
-
-private:
-    T t[1];
-};
-
-#define CAPTURE(name, stream) \
-    for (::logging::Capture& name : SingleIter<::logging::Capture>(stream, __FILE__, __LINE__))
-
-template<typename ... Args>
-struct variadic { };
-
-#endif  // MACRO_H_
+#endif  // __MACRO_FOR_H
