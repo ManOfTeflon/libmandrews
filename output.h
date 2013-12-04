@@ -6,6 +6,8 @@
 #include <set>
 #include <assert.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
 
 #include "macro.h"
 
@@ -231,26 +233,39 @@ class Dump {
     return *this;
   }
 
- protected:
-  void Output(const std::string& prefix) {
-    std::string filename = file_.substr(file_.find_last_of("/") + 1);
-    std::stringstream prompt;
-    prompt << color_ << prefix << color_ << " (\E[1;36m"
-        << filename << "\E[0;35m:\E[1;36m" << line_
-        << color_ << ")\E[0m";
-    Print(*os_, prefix.size(), prompt.str());
+  static int Indent() {
+      return ++Indentation();
   }
 
-  void Print(std::ostream& stream, int prefix, std::string prompt) {
-    const int line_length = 128;
-    char buffer[line_length + 1] = { '\0' };
+  static int Unindent() {
+      int& i = Indentation();
+      if (i) --i;
+      return i;
+  }
+
+ protected:
+  void Output(const char* prefix) {
+    char prompt[maxTotalLength];
+    char filename_buffer[filenameLength + 1];
+    const char* filename = Filename(filename_buffer, filenameLength + 1);
+    int written = snprintf(prompt, maxTotalLength, "%s%s %s(\E[1;36m%*.*s%s)\E[0m%*s",
+            color_.c_str(), prefix, color_.c_str(), filenameLength, filenameLength,
+            filename, color_.c_str(), Indentation() * spacesPerIndent, "");
+    assert(written < maxTotalLength);
+    int real_len = written - color_.size() * 6 - 4;
+    Print(*os_, real_len, prompt);
+  }
+  void Print(std::ostream& stream, int prefix, char* prompt) {
+    const int prompt_len = strlen(prompt);
+    char buffer[maxTotalLength + 1] = { '\0' };
     const std::string carat = "\E[1;32m>\E[0m ";
     bool first = true;
-    while(ss_.get(buffer, line_length + 1, '\n').gcount()) {
+    while(ss_.get(buffer, maxTotalLength + 1, '\n').gcount()) {
       ss_.ignore();
-      stream << prompt << (first ? carat : "  ") << buffer << std::endl;
+      stream << prompt << carat << buffer << std::endl;
       if (first) {
-        prompt = prompt.replace(0, prefix + color_.size(), std::string(prefix, ' '));
+        prompt += prompt_len - prefix;
+        memset(prompt, ' ', prefix);
         first = false;
       }
     }
@@ -262,6 +277,25 @@ class Dump {
   const std::string color_;
   std::stringstream ss_;
   std::ostream* os_;
+  static constexpr int filenameLength = 30;
+  static constexpr int maxTotalLength = 128;
+  static constexpr int spacesPerIndent = 2;
+
+  static inline int& Indentation() {
+    static int indentation = 0;
+    return indentation;
+  }
+  const char* Filename(char* buffer, int length) const {
+    const char* file = file_.c_str();
+    const char* f = file + strlen(file);
+    int i = 0;
+    for (; (f - 1) >= file && *(f - 1) != '/'; ++i, --f);
+    if (i > 10) f += (i - 10);
+    int written = snprintf(buffer, length, "%*s\E[0;35m:\E[1;36m%*d", 10, f, 5, line_);
+    assert(written == length - 1);
+    if (i > 15) memset(buffer, '.', 3);
+    return buffer;
+  }
 };
 
 struct Capture : public Dump {

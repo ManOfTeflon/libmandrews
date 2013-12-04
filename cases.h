@@ -136,6 +136,7 @@ struct Case {
             SysCall(dup2)(out[WRITE_END], STDOUT_FILENO);
             SysCall(dup2)(STDOUT_FILENO, STDERR_FILENO);
             SysCall(close)(out[WRITE_END]);
+            logging::Dump::Indent();
             Tester::SetHandler(Tester::default_handle);
             Call(i);
         }
@@ -286,12 +287,11 @@ typename LambdaFunc<Lambda>::func lambdaFunc(Lambda lambda) {
 
 }  // namespace Tester
 
-#define ARGS_MAP(a) [#a] a
-#define ARGS_REDUCE(a, b) a b
+#define ARGS__MAP(a) [#a] a
 
 #define CASE_(name, params, ...) \
     ::Tester::createCase(::Tester::lambdaFunc([] params { }), #name #params) \
-        MAP_REDUCE(ARGS_MAP, ARGS_REDUCE, __VA_ARGS__) * [&] params 
+        MAP_REDUCE(ARGS__MAP, SPACE_SEPARATE, DEFAULT((), __VA_ARGS__)) * [&] params 
 
 #define CASE(name, ...) \
     CASE_(name, __VA_ARGS__)
