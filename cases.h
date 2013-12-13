@@ -104,12 +104,18 @@ private:
     std::vector<Case*> _cases;
 };
 
-struct Process {
-    int pid;
-    int out;
-};
-
 struct Case {
+private:
+    struct TestProcess {
+        int i;
+        int pid;
+        int out;
+        iovec buf;
+        FILE* f;
+    };
+    enum class Result { SUCCESS, FAILURE, TIMEOUT, RUNNING };
+
+public:
     Case(const char* const name) :
         _expected(0), _name(name), _timeout(1) { }
     virtual const Case& Call(int i) const = 0;
@@ -117,88 +123,15 @@ struct Case {
     // lists in the same process.
     virtual size_t Num() const = 0;
     virtual const char* ArgName(int i) const = 0;
-    const Case& Fork(int i) {
-        // stderr is also re-directed to stdout.  This is the only way to get
-        // anywhere close to the right output order from the forked process.
-        // In fact, it will guarantee exact output order.
-        int out[2];
-        // If a test fills its buffer (4GiB), it deserves to see what happens
-        // when a write fails.
-        SysCall(pipe2)(out, O_NONBLOCK);
-        _start = now();
-        int pid = SysCall(fork)();
-        if (pid) {
-            Run::Parent() = true;
-            SysCall(close)(out[WRITE_END]);
-            _children.insert(std::pair<int, Process>(i, {pid, out[READ_END]}));
-        } else {
-            Run::Parent() = false;
-            SysCall(dup2)(out[WRITE_END], STDOUT_FILENO);
-            SysCall(dup2)(STDOUT_FILENO, STDERR_FILENO);
-            SysCall(close)(out[WRITE_END]);
-            logging::Dump::Indent();
-            Tester::SetHandler(Tester::default_handle);
-            Call(i);
-        }
-    }
-    const Case& ForkAll() {
-        int n = Num();
-        for (int i = 0; i < n; ++i) {
-            Fork(i);
-            if (!Run::Parent()) break;
-        }
-        return *this;
-    }
-    bool Wait(int i) {
-        return WaitPid(i, _children[i]);
-    }
-    bool WaitAll() {
-        bool success = true;
-        for (auto p : _children) {
-            success &= WaitPid(p.first, p.second);
-        }
-        return success;
-    }
+    const Case& Fork(int i);
+    const Case& ForkAll();
+    bool WaitAll();
 
 private:
-    bool WaitPid(int i, Process& child) {
-        int status;
-        ASSERT(Run::Parent());
-        int reaped;
-        do {
-            reaped = SysCall(waitpid)(child.pid, &status, (_timeout > 0) ? WNOHANG : 0);
-            if (reaped) break;
-        } while (now() < _start + _timeout * US_PER_SEC);
-        ASSERT(!reaped || reaped == child.pid) << "Reaped wrong child!" << V(reaped) << V(child.pid);
-        fprintf(stdout, "\n");
-        P(OUT) << "Beginning test '\E[0;36m" << _name << "\E[0m' "
-            "with arguments '\E[0;36m" << ArgName(i) << "\E[0m'";
-        SysCall(splice)(child.out, NULL, STDOUT_FILENO, NULL, INT_MAX, 0);
-        SysCall(close)(child.out);
-        if (!reaped) {
-            // Ain't got time fo' that.
-            kill(child.pid, 9);
-            P(ERR) << "Test '\E[0;36m" << _name << "\E[0m' \E[1;31mtimed out\E[0m "
-                "with arguments '\E[0;36m" << ArgName(i) << "\E[0m'\n\tin \E[1;34m" <<
-                ((double)(now() - _start) / 1000) << "\E[0m milliseconds";
-            return false;
-        } else if (status == _expected) {
-            P(OUT) << "Test '\E[0;36m" << _name << "\E[0m' succeeded "
-                "with arguments '\E[0;36m" << ArgName(i) << "\E[0m'\n\tin \E[1;34m"
-                << ((double)(now() - _start) / 1000) << "\E[0m milliseconds "
-                "with exit code \E[1;34m" << status << "\E[0m!";
-            return true;
-        } else {
-            P(ERR) << "Test '\E[0;36m" << _name << "\E[0m' \E[1;31mfailed\E[0m "
-                "with arguments '\E[0;36m" << ArgName(i) << "\E[0m'\n\tin \E[1;34m" <<
-                ((double)(now() - _start) / 1000) << "\E[0m milliseconds "
-                "with exit code \E[1;31m" << status << "\E[0m!\n\t"
-                "Expected \E[1;34m" << _expected << "\E[0m.";
-            return false;
-        }
-    }
+    void Flush(TestProcess& child);
+    Result WaitPid(TestProcess& child);
 
-    std::map<int, Process> _children;
+    std::map<int, TestProcess*> _children;
 
 protected:
     int _expected;
@@ -206,20 +139,6 @@ protected:
     unsigned long _start;
     unsigned long _timeout;
 };
-
-inline Run::Run(std::initializer_list<Case*> cases) {
-    for (Case* c : cases) {
-        c->ForkAll();
-        if (Parent()) {
-            c->WaitAll();
-        }
-        else break;
-    }
-    if (Parent()) {
-        printf("\n");
-        exit(0);
-    }
-}
 
 template<typename ... Args>
 class TemplatedCase : public Case {
@@ -298,5 +217,7 @@ typename LambdaFunc<Lambda>::func lambdaFunc(Lambda lambda) {
 
 #define RUN(name) \
     typename ::Tester::Run name = 
+
+#include "cases.hpp"
 
 #endif  // __CASES_H_

@@ -32,7 +32,7 @@ bool NamedTest<A, Args...>::operator()(Args... args) {
   bool success;
   c.Fork(0);
   if (Run::Parent()) {
-      success = c.Wait(0);
+      success = c.WaitAll();
       printf("\n");
   } else {
       exit(0);

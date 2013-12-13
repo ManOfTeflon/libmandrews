@@ -79,7 +79,6 @@ inline bool RunAll() {
   return success;
 }
 
-
 }  // namespace Tester
 
 #define TEST(n, ...) TEST_ALIAS(n, #n, __VA_ARGS__)
