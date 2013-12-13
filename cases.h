@@ -139,6 +139,7 @@ struct Case {
             Tester::SetHandler(Tester::default_handle);
             Call(i);
         }
+        return *this;
     }
     const Case& ForkAll() {
         int n = Num();
