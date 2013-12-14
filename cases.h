@@ -90,7 +90,7 @@ struct Run {
             const char* file, int line) {
         return [=](Args ... args) -> R {
             R ret;
-            if ((ret = func(args...)) < 0) {
+            if ((ssize_t)(ret = func(args...)) < 0) {
                 auto n = errno;
                 const char* message = strerror(n);
                 ::logging::Dump(FTL, file, line) << "Failed syscall(" << name << ")!"

@@ -7,6 +7,18 @@
 #include <cxxabi.h>
 #include <unistd.h>
 #include <string.h>
+#include <functional>
+
+struct Auto {
+    Auto(std::function<void(void)> func) : m_func(func) { }
+    ~Auto() {
+        m_func();
+    }
+private:
+    std::function<void(void)> m_func;
+};
+#define AUTO(expr) \
+    Auto CONCAT(__auto__, __COUNTER__)([]{ expr })
 
 const unsigned long long NS_PER_SEC = 1000000000;
 const unsigned long long US_PER_SEC = 1000000;

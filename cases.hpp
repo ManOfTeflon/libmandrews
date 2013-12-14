@@ -38,7 +38,6 @@ inline const Case& Case::ForkAll() {
 
 inline bool Case::WaitAll() {
     bool success = true;
-    int reaped = 0;
     while (!_children.empty()) {
         for (auto it = _children.begin(); it != _children.end(); ++it) {
             Result r;

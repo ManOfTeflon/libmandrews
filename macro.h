@@ -18,17 +18,6 @@
 
 #define ARRAYSIZE(ary) (sizeof(ary) / sizeof(*ary))
 
-struct Auto {
-    Auto(std::function<void(void)> func) : m_func(func) { }
-    ~Auto() {
-        m_func();
-    }
-private:
-    std::function<void(void)> m_func;
-};
-#define AUTO(expr) \
-    Auto CONCAT(__auto__, __COUNTER__)([]{ expr })
-
 #define IDENTITY(a) a
 #define STRINGIFY(a) #a
 #define REVERSE__REDUCE(a, b) b, a
