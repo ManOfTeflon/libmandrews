@@ -12,6 +12,7 @@
 #include <functional>
 
 #include "testing.h"
+#include "arguments.h"
 #include "util.h"
 
 #define READ_END 0
@@ -27,55 +28,6 @@
 #define SysCall(func)  Run::SysCall_(func, #func, __FILE__, __LINE__)
 
 namespace Tester {
-
-template<typename ... Args>
-class TemplatedCase;
-
-template<typename ... Args>
-class Arguments {
-protected:
-    void Call(int list, std::function<void(Args...)> func) {
-        CallHelper(list, func);
-    }
-    void Add() { }
-    size_t Num() const { return 1; }
-
-protected:
-    template<typename ... A>
-    friend class TemplatedCase;
-    Arguments() { }
-
-    template<typename F, typename ... A>
-    inline void CallHelper(int list, F func, A ... args) {
-        func(args...);
-    }
-};
-
-template<typename T, typename ... Args>
-class Arguments<T, Args...> : public Arguments<Args...> {
-public:
-    void Add(T m, Args ... args) {
-        _m.push_back(m);
-        Arguments<Args...>::Add(args...);
-    }
-    void Call(int list, std::function<void(T, Args...)> func) {
-        CallHelper(list, func);
-    }
-    size_t Num() const {
-        return _m.size();
-    }
-
-protected:
-    template<typename ... A>
-    friend class TemplatedCase;
-    Arguments() { }
-
-    template<typename F, typename ... A>
-    inline void CallHelper(int list, F func, A ... args) {
-        Arguments<Args...>::CallHelper(list, func, args..., _m[list]);
-    }
-    std::vector<T> _m;
-};
 
 class Case;
 
@@ -110,6 +62,8 @@ private:
         int i;
         int pid;
         int out;
+        int status;
+        uint64_t usecs;
         iovec buf;
         FILE* f;
     };
@@ -126,6 +80,8 @@ public:
     const Case& Fork(int i);
     const Case& ForkAll();
     bool WaitAll();
+    Result Finish(const TestProcess& child, Result result);
+    void Succeed(uint64_t usecs);
 
 private:
     void Flush(TestProcess& child);
@@ -146,7 +102,10 @@ public:
     TemplatedCase(const char* const name) :
         Case(name) { }
     virtual const Case& Call(int i) const {
+        logging::Dump::Indent();
+        Tester::SetHandler(Tester::default_handle);
         _args.Call(i, _func);
+        logging::Dump::Unindent();
         return *this;
     }
     virtual size_t Num() const {

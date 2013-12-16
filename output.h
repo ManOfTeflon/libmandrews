@@ -8,6 +8,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <string.h>
+#include <thread>
 
 #include "macro.h"
 
@@ -42,9 +44,10 @@ const std::string endl = "\n";
 #define D(channel) DISABLED_STREAM
 #endif
 
-#ifdef CAUTIOUS
-#define ASSERT(condition) \
+#define EXPECT(condition) \
     if(!(condition)) D(BRK) << "Failed assertion: " #condition << ::logging::endl
+#ifdef CAUTIOUS
+#define ASSERT(condition) EXPECT(condition)
 #else
 #define ASSERT(condition) DISABLED_STREAM
 #endif
@@ -248,8 +251,8 @@ class Dump {
     char prompt[maxTotalLength];
     char filename_buffer[filenameLength + 1];
     const char* filename = Filename(filename_buffer, filenameLength + 1);
-    int written = snprintf(prompt, maxTotalLength, "%d %s%s (%*.*s%s)\E[0m%*s",
-            getpid(), color_.c_str(), prefix, filenameLength, filenameLength,
+    int written = snprintf(prompt, maxTotalLength, "%s%s (%*.*s%s)\E[0m%*s",
+            color_.c_str(), prefix, filenameLength, filenameLength,
             filename, color_.c_str(), Indentation() * spacesPerIndent, "");
     assert(written < maxTotalLength);
     int real_len = written - color_.size() * 5 - 4;

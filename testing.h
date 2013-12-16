@@ -81,27 +81,38 @@ inline bool RunAll() {
 
 }  // namespace Tester
 
-#define TEST(n, ...) TEST_ALIAS(n, #n, __VA_ARGS__)
+#define TEST(n, ...) \
+    DECLARE_TEST(n, __VA_ARGS__) \
+    DEFINE_TEST(n, __VA_ARGS__)
 
-#define TEST_ALIAS(n, alias, ...) \
+#define DECLARE_TEST(n, ...) \
     namespace n { \
-    extern const char* const name = alias; \
-    static bool body(__VA_ARGS__); \
-    auto Run = ::Tester::Create<&name>(&body); \
+    extern const char* const name; \
+    bool body(__VA_ARGS__); \
+    static auto Run = ::Tester::Create<&name>(&body); \
+    }
+
+#define DEFINE_TEST(n, ...) \
+    DEFINE_TEST_ALIAS(n, #n, __VA_ARGS__)
+
+#define DEFINE_TEST_ALIAS(n, alias, ...) \
+    namespace n { \
+    const char* const name = alias; \
     } \
     bool n::body(__VA_ARGS__)
 
 #define TEST_CASE(test, case_, ...) \
     namespace test { \
-    TEST_ALIAS(case_, (#test "::" #case_)) { \
+    DECLARE_TEST(case_) \
+    DEFINE_TEST_ALIAS(case_, (#test "::" #case_)) { \
       return test::body(__VA_ARGS__); \
     } \
-    } \
+    }
 
-#define EXPECT(stream, out) \
+#define EXPECT_STREAM(stream, out) \
     if (!stream.expect(#out)) return false;
 
-#define EXPECT_NOT(stream, out) \
+#define EXPECT_STREAM_NOT(stream, out) \
     if (stream.expect(#out)) return false;
 
 #include "cases.h"

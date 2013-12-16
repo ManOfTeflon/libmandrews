@@ -20,8 +20,6 @@ inline const Case& Case::Fork(int i) {
         SysCall(close)(out[READ_END]);
         SysCall(dup2)(out[WRITE_END], STDOUT_FILENO);
         SysCall(dup2)(STDOUT_FILENO, STDERR_FILENO);
-        logging::Dump::Indent();
-        Tester::SetHandler(Tester::default_handle);
         Call(i);
     }
     return *this;
@@ -48,6 +46,7 @@ inline bool Case::WaitAll() {
             }
         }
     }
+    ASSERT(success);
     return success;
 }
 
@@ -69,9 +68,10 @@ inline Case::Result Case::WaitPid(TestProcess& child) {
     int status;
     ASSERT(Run::Parent());
     int reaped;
-    reaped = SysCall(waitpid)(child.pid, &status, (_timeout > 0) ? WNOHANG : 0);
+    reaped = SysCall(waitpid)(child.pid, &child.status, (_timeout > 0) ? WNOHANG : 0);
     auto n = now();
-    if (!reaped && n < _start + _timeout * US_PER_SEC) return Result::RUNNING;
+    child.usecs = n - _start;
+    if (!reaped && child.usecs < _timeout * US_PER_SEC) return Result::RUNNING;
     else if (reaped) ASSERT(reaped == child.pid) << "Reaped wrong child!  " << V(reaped) << V(child.pid);
     SysCall(fclose)(child.f);
     SysCall(close)(child.out);
@@ -81,34 +81,54 @@ inline Case::Result Case::WaitPid(TestProcess& child) {
     std::cout.flush();
     SysCall(fflush)(stdout);
     Auto auto_free([&child]{ free(child.buf.iov_base); });
-    const char* args = ArgName(child.i);
+    SysCall(fwrite)(child.buf.iov_base, child.buf.iov_len, 1, stdout);
     if (!reaped) {
         // Ain't got time fo' that.
         kill(child.pid, 9);
-        SysCall(fwrite)(child.buf.iov_base, child.buf.iov_len, 1, stdout);
-        PIPE(r, ERR);
-        r << "Test '\E[0;36m" << _name << "\E[0m' \E[1;31mtimed out\E[0m";
-        if (strlen(args)) r << " with arguments '\E[0;36m" << args << "\E[0m'";
-        r << "\n\tin \E[1;34m" << ((double)(n - _start) / 1000) << "\E[0m milliseconds ";
-        return Result::TIMEOUT;
-    } else if (status == _expected) {
-        P(OUT) << "<redacted>";
-        PIPE(r, OUT);
-        r << "Test '\E[0;36m" << _name << "\E[0m' succeeded";
-        if (strlen(args)) r << " with arguments '\E[0;36m" << args << "\E[0m'";
-        r << "\n\tin \E[1;34m" << ((double)(n - _start) / 1000) << "\E[0m milliseconds "
-            << "with exit code \E[1;34m" << status << "\E[0m!";
-        return Result::SUCCESS;
+        return Finish(child, Result::TIMEOUT);
+    } else if (status != _expected) {
+        return Finish(child, Result::FAILURE);
     } else {
-        SysCall(fwrite)(child.buf.iov_base, child.buf.iov_len, 1, stdout);
-        PIPE(r, ERR);
-        r << "Test '\E[0;36m" << _name << "\E[0m' \E[1;31mfailed\E[0m";
-        if (strlen(args)) r << " with arguments '\E[0;36m" << args << "\E[0m'";
-        r << "\n\tin \E[1;34m" << ((double)(n - _start) / 1000) << "\E[0m milliseconds "
-            << " with exit code \E[1;14m" << status << "\E[0m!\n\t"
-            "Expected \E[1;34m" << _expected << "\E[0m.";
-        return Result::FAILURE;
+        return Finish(child, Result::SUCCESS);
     }
+}
+
+inline Case::Result Case::Finish(const TestProcess& child, Case::Result result) {
+    const char* args = ArgName(child.i);
+    switch (result) {
+        case Result::SUCCESS: {
+            PIPE(r, OUT);
+            r << "Test '\E[0;36m" << _name << "\E[0m' succeeded";
+            if (strlen(args)) r << " with arguments '\E[0;36m" << args << "\E[0m'";
+            r << "\n\tin \E[1;34m" << ((double)(child.usecs) / 1000) << "\E[0m milliseconds "
+                << "with exit code \E[1;34m" << child.status << "\E[0m!";
+            break;
+        }
+        case Result::FAILURE: {
+            PIPE(r, ERR);
+            r << "Test '\E[0;36m" << _name << "\E[0m' \E[1;31mfailed\E[0m";
+            if (strlen(args)) r << " with arguments '\E[0;36m" << args << "\E[0m'";
+            r << "\n\tin \E[1;34m" << ((double)(child.usecs) / 1000) << "\E[0m milliseconds "
+                << " with exit code \E[1;14m" << child.status << "\E[0m!\n\t"
+                "Expected \E[1;34m" << _expected << "\E[0m.";
+            break;
+        }
+        case Result::TIMEOUT: {
+            PIPE(r, ERR);
+            r << "Test '\E[0;36m" << _name << "\E[0m' \E[1;31mtimed out\E[0m";
+            if (strlen(args)) r << " with arguments '\E[0;36m" << args << "\E[0m'";
+            r << "\n\tin \E[1;34m" << ((double)(child.usecs) / 1000) << "\E[0m milliseconds ";
+            break;
+        }
+        ILLEGAL_DEFAULT();
+    }
+    return result;
+}
+
+inline void Case::Succeed(uint64_t usecs) {
+    PIPE(r, OUT);
+    r << "Test '\E[0;36m" << _name << "\E[0m' succeeded";
+    r << "\n\tin \E[1;34m" << ((double)(usecs) / 1000) << "\E[0m milliseconds";
 }
 
 inline Run::Run(std::initializer_list<Case*> cases) {

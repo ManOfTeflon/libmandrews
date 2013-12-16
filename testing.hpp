@@ -21,22 +21,19 @@ Test<Args...>::Test(const std::string& alias, bool (*test)(Args...))
 
 template<typename ... Args>
 void Test<Args...>::Register(const std::string& name, Test<Args...>* test) {
-  D(DBG) << "Registered test: " << name;
+  D(DBG) << "Registered test: '\E[0;36m" << name << "\E[0m'";
   tests()[name] = test;
 }
 
 template<const char* const* A, typename ... Args>
 bool NamedTest<A, Args...>::operator()(Args... args) {
   TemplatedCase<Args...> c(*A);
-  c["(args...)"](args...) * [this](Args ... args) { this->_test(args...); } % 0;
+  c(args...) * [this](Args ... args) { this->_test(args...); } % 0;
   bool success;
-  c.Fork(0);
-  if (Run::Parent()) {
-      success = c.WaitAll();
-      printf("\n");
-  } else {
-      exit(0);
-  }
+  auto n = now();
+  c.Call(0);
+  n = now() - n;
+  c.Succeed(n);
   return success;
 }
 
