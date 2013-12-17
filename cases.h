@@ -25,8 +25,6 @@
     if(!(condition)) D(FTL) << "Failed assertion: " #condition << ::logging::endl
 #endif
 
-#define SysCall(func)  Run::SysCall_(func, #func, __FILE__, __LINE__)
-
 namespace Tester {
 
 class Case;
@@ -36,20 +34,6 @@ struct Run {
     static bool& Parent() {
         static bool parent = false;
         return parent;
-    }
-    template<typename R, typename ... Args>
-    static std::function<R(Args...)> SysCall_(R (*func)(Args...), const char* name,
-            const char* file, int line) {
-        return [=](Args ... args) -> R {
-            R ret;
-            if ((ssize_t)(ret = func(args...)) < 0) {
-                auto n = errno;
-                const char* message = strerror(n);
-                ::logging::Dump(FTL, file, line) << "Failed syscall(" << name << ")!"
-                    "  Error(" << n << "): " << message;
-            }
-            return ret;
-        };
     }
 
 private:

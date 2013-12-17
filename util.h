@@ -20,6 +20,23 @@ private:
 #define AUTO(expr) \
     Auto CONCAT(__auto__, __COUNTER__)([]{ expr })
 
+#define SysCall(func)  ::SysCall_(func, #func, __FILE__, __LINE__)
+
+template<typename R, typename ... Args>
+constexpr std::function<R(Args...)> SysCall_(R (*func)(Args...), const char* name,
+        const char* file, int line) {
+    return [=](Args ... args) -> R {
+        R ret;
+        if ((ssize_t)(ret = func(args...)) < 0) {
+            auto n = errno;
+            const char* message = strerror(n);
+            ::logging::Dump(FTL, file, line) << "Failed syscall(" << name << ")!"
+                "  Error(" << n << "): " << message;
+        }
+        return ret;
+    };
+}
+
 const unsigned long long NS_PER_SEC = 1000000000;
 const unsigned long long US_PER_SEC = 1000000;
 const unsigned long long MS_PER_SEC = 1000;

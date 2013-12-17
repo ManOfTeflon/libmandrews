@@ -10,6 +10,8 @@
 #include <unistd.h>
 #include <string.h>
 #include <thread>
+#include <readline/readline.h>
+#include <readline/history.h>
 
 #include "macro.h"
 
@@ -147,14 +149,18 @@ class Choice {
 class Prompt {
  public:
   Prompt(const std::string& prompt) {
-    std::cout << prompt << " ";
+    add_history(line = readline(prompt.c_str()));
+  }
+  ~Prompt() {
+    free(line);
   }
 
-  template<typename T>
-  Prompt& operator>>(T& t) {
-    std::cin >> t;
+  Prompt& operator>>(std::string& t) {
+    t = line;
     return *this;
   }
+ private:
+  char* line;
 };
 
 class Dump {
