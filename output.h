@@ -166,6 +166,9 @@ class Prompt {
   operator const char*() {
       return line;
   }
+  operator std::string() {
+      return std::string(line);
+  }
  private:
   char* line;
 };
