@@ -26,6 +26,9 @@ namespace logging {
 
 const std::string endl = "\n";
 
+#ifndef NVERBOSE
+#define VERBOSE
+#endif
 #ifndef NDEBUG
 #define DEBUG
 #endif
@@ -159,6 +162,10 @@ class Prompt {
     t = line;
     return *this;
   }
+
+  operator const char*() {
+      return line;
+  }
  private:
   char* line;
 };
@@ -194,7 +201,7 @@ class Dump {
     flush();
   }
 
-  void flush() {
+  inline void flush() {
     switch(channel_) {
       case OUT:
         Output("OUT");
@@ -252,8 +259,13 @@ class Dump {
       return i;
   }
 
+  inline bool expect(const std::string& expected) {
+      return !expected.compare(ss_.str());
+  }
+
  protected:
-  void Output(const char* prefix) {
+  inline void Output(const char* prefix) {
+#ifdef VERBOSE
     char prompt[maxTotalLength];
     char filename_buffer[filenameLength + 1];
     const char* filename = Filename(filename_buffer, filenameLength + 1);
@@ -263,10 +275,16 @@ class Dump {
     assert(written < maxTotalLength);
     int real_len = written - color_.size() * 5 - 4;
     Print(*os_, real_len, prompt);
+#else
+    char empty[] = { '\0' };
+    Printf(*os_, 0, empty);
+#endif
   }
-  void Print(std::ostream& stream, int prefix, char* prompt) {
+
+  inline void Print(std::ostream& stream, int prefix, char* prompt) {
     const int prompt_len = strlen(prompt);
     char buffer[maxTotalLength + 1] = { '\0' };
+#ifdef VERBOSE
     const std::string carat = "\E[1;32m>\E[0m ";
     bool first = true;
     while(ss_.get(buffer, maxTotalLength + 1, '\n').gcount()) {
@@ -278,6 +296,12 @@ class Dump {
         first = false;
       }
     }
+#else
+    while(ss_.get(buffer, maxTotalLength + 1, '\n').gcount()) {
+      ss_.ignore();
+      stream << buffer << std::endl;
+    }
+#endif
   }
 
   const Channel channel_;
@@ -309,15 +333,6 @@ class Dump {
     if (i > file_len) memset(buffer, '.', 3);
     return buffer;
   }
-};
-
-struct Capture : public Dump {
-    Capture(Channel channel, const std::string& file, int line) : Dump(channel, file, line) { }
-    Capture(std::ostream& os, const std::string& file, int line) : Dump(os, file, line) { }
-
-    inline bool expect(const std::string& expected) {
-        return !expected.compare(ss_.str());
-    }
 };
 
 #define STATIC_CALL(msg) \
@@ -357,7 +372,7 @@ private:
 };
 
 #define CAPTURE(name, stream) \
-    for (::logging::Capture& name : SingleIter<::logging::Capture>(stream, __FILE__, __LINE__))
+    for (::logging::Dump& name : SingleIter<::logging::Dump>(stream, __FILE__, __LINE__))
 
 template<typename ... Args>
 struct variadic { };
