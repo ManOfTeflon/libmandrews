@@ -64,6 +64,14 @@ const std::string endl = "\n";
     << ::logging::endl
 #define ASSERT_NE(x, y) ASSERT((x) != (y)) << (x) << " vs. " << (y) \
     << ::logging::endl
+#define ASSERT_GE(x, y) ASSERT((x) >= (y)) << (x) << " vs. " << (y) \
+    << ::logging::endl
+#define ASSERT_LE(x, y) ASSERT((x) <= (y)) << (x) << " vs. " << (y) \
+    << ::logging::endl
+#define ASSERT_GT(x, y) ASSERT((x) > (y)) << (x) << " vs. " << (y) \
+    << ::logging::endl
+#define ASSERT_LT(x, y) ASSERT((x) < (y)) << (x) << " vs. " << (y) \
+    << ::logging::endl
 
 constexpr bool isNull(char ary[]) {
   return ary;

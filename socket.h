@@ -8,53 +8,54 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <functional>
 
 class Connection {
- public:
-  int recv(void* data, int len);
-  template<typename T>
-  int recv(T* t) {
-    return recv(t, sizeof(T));
-  }
+public:
+    int recv(void* data, int len);
+    template<typename T>
+    int recv(T* t) {
+        return recv(t, sizeof(T));
+    }
 
-  int send(void* data, int len);
-  template<typename T>
-  int send(T* t) {
-    return send(t, sizeof(T));
-  }
-  char* remote() {
-    return inet_ntoa(_remote.sin_addr);
-  }
-  int port() {
-    return _remote.sin_port;
-  }
+    int send(void* data, int len);
+    template<typename T>
+        int send(T* t) {
+            return send(t, sizeof(T));
+        }
+    char* remote() {
+        return inet_ntoa(_remote.sin_addr);
+    }
+    int port() {
+        return _remote.sin_port;
+    }
 
-  void close() { delete this; }
+    void close() { delete this; }
 
- private:
-  static Connection* connect(int client_sock, unsigned long addr, int port);
-  static Connection* accept(int server_sock);
-  friend class Socket;
+private:
+    static Connection* connect(int client_sock, unsigned long addr, int port);
+    static Connection* accept(int server_sock);
+    friend class Socket;
 
-  Connection(int sock, const sockaddr_in& remote)
-    : _sock(sock), _remote(remote) { }
+    Connection(int sock, const sockaddr_in& remote)
+        : _sock(sock), _remote(remote) { }
 
-  virtual ~Connection() { ::close(_sock); }
+    virtual ~Connection() { ::close(_sock); }
 
-  int _sock;
-  sockaddr_in _remote;
+    int _sock;
+    sockaddr_in _remote;
 };
 
 class Socket {
- public:
-  Socket();
-  virtual ~Socket() { close(_sock); }
+public:
+    Socket();
+    virtual ~Socket() { close(_sock); }
 
-  virtual void listen(int port, int max_pending, void (*callback)(Connection*));
-  virtual Connection* connect(unsigned long addr, int port);
+    virtual void listen(int port, int max_pending, std::function<void(Connection*)>& callback);
+    virtual Connection* connect(unsigned long addr, int port);
 
- private:
-  int _sock;
+private:
+    int _sock;
 };
 
 #endif  // SOCKET_H_
