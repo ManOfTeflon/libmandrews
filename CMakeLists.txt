@@ -10,3 +10,9 @@ set(CMAKE_CXX_FLAGS "-std=c++0x ${CMAKE_C_FLAGS}")
 
 add_library(mandrews STATIC testing.cpp socket.cpp semaphore.cpp)
 target_link_libraries(mandrews rt pthread readline)
+
+set(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_SOURCE_DIR})
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+
+add_executable(test_array tests/array.cpp)
+target_link_libraries(test_array mandrews)
