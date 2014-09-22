@@ -32,10 +32,14 @@ extern Lock lock;
 const std::string endl = "\n";
 
 #ifndef NVERBOSE
+#ifndef VERBOSE
 #define VERBOSE
 #endif
+#endif
 #ifndef NDEBUG
+#ifndef DEBUG
 #define DEBUG
+#endif
 #endif
 #ifndef NCAUTIOUS
 #define CAUTIOUS

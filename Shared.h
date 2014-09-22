@@ -117,13 +117,7 @@ public:
         , m_ref(*(new T(std::forward<Args>(args)...)))
     { }
 
-    ~Pointer()
-    {
-        if (last())
-        {
-            delete &m_ref;
-        }
-    }
+    virtual ~Pointer() { }
 
     Pointer(const Pointer& other) = default;
     Pointer(Pointer&& other) = default;
