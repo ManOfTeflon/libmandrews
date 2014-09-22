@@ -28,12 +28,11 @@ void Test<Args...>::Register(const std::string& name, Test<Args...>* test) {
 template<const char* const* A, typename ... Args>
 bool NamedTest<A, Args...>::operator()(Args... args) {
   TemplatedCase<Args...> c(*A);
-  c(args...) * [this](Args ... args) { this->_test(args...); } % 0;
+  c (args...) ["..."] * [this](Args ... args) { this->_test(args...); } % 0;
   bool success;
-  auto n = now();
-  c.Call(0);
-  n = now() - n;
-  c.Succeed(n);
+  c.Fork(0);
+  c.WaitAll(false);
+  if (!TestRun::Parent()) exit(0);
   return success;
 }
 

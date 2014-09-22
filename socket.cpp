@@ -1,6 +1,7 @@
 #include "socket.h"
 #include "util.h"
 #include <signal.h>
+#include <sys/un.h>
 
 static void handle_SIGPIPE(int signal) {
 }
@@ -14,74 +15,69 @@ Connection* Connection::accept(int server_sock) {
     client_len = sizeof(client_addr);
 
     /* Wait for a client to connect */
-    if ((sock = ::accept(server_sock, (struct sockaddr *) &client_addr, 
-                    &client_len)) < 0) {
-        perror("accept");
-        P(ERR) << "Accept failed on socket " << server_sock << "!";
+    if ((sock = ::accept4(server_sock, (struct sockaddr *) &client_addr, 
+                    &client_len, SOCK_NONBLOCK)) < 0) {
         return NULL;
     }
 
-    return new Connection(sock, client_addr);
+    return new Connection(sock, client_addr, false);
 }
 
-Connection* Connection::connect(int client_sock, unsigned long addr, int port) {
-    struct sockaddr_in server_addr;
+bool Connection::recv(void* data, size_t len) {
+    struct pollfd fd { _sock, POLLIN };
+    while (len) {
+        int p = ::poll(&fd, 1, 100);
+        if (p == 0) continue;
+        else if (p < 0) goto error;
 
-    memset(&server_addr, 0, sizeof(server_addr));
-    server_addr.sin_family      = AF_INET;
-    server_addr.sin_addr.s_addr = addr;
-    server_addr.sin_port        = htons(port);
-
-    if (::connect(client_sock, (struct sockaddr *) &server_addr,
-                sizeof(server_addr)) < 0) {
-        perror("connect");
-        P(ERR) << "Connecting to socket " << client_sock << " failed!";
-        return NULL;
-    }
-
-    return new Connection(client_sock, server_addr);
-}
-
-int Connection::recv(void* data, int len) {
-    int total_bytes_rcvd = 0;
-
-    while (total_bytes_rcvd < len) {
         /* See if there is more data to receive */
-        int recv_msg_size = ::recv(_sock, (char*)data + total_bytes_rcvd,
-                len - total_bytes_rcvd, 0);
+        int recved = ::recv(_sock, (char*)data, len, 0);
 
-        if (recv_msg_size < 0) {
-            perror("recv");
-            P(ERR) << "Receive failed on client socket " << _sock << "!";
-            return -1;
-        } else if (recv_msg_size == 0) {
-            break;
-        }
-        total_bytes_rcvd += recv_msg_size;
+        if (recved < 0) goto error;
+        data = (char*)data + recved;
+        len -= recved;
     }
 
-    return total_bytes_rcvd;
+    return true;
+
+error:
+    P(ERR) << "Receive failed on " << (_client ? "client" : "server") << " socket " << _sock << ": " << strerror(errno);
+    return false;
 }
 
-int Connection::send(void* data, int len) {
-    int sent;
-    if ((sent = ::send(_sock, data, len, 0)) != len) {
-        perror("send");
-        P(ERR) << "Send to client socket " << _sock << " failed!";
-        return -1;
+bool Connection::send(void* data, size_t len) {
+    struct pollfd fd { _sock, POLLOUT };
+    bool polling = true;
+    while (len) {
+        polling = true;
+        int p = ::poll(&fd, 1, 100);
+        if (p == 0) continue;
+        else if (p < 0) goto error;
+
+        polling = false;
+        ssize_t sent = ::send(_sock, data, len, 0);
+        if (sent < 0) goto error;
+        data = (char*)data + sent;
+        len -= sent;
     }
-    return sent;
+    return true;
+
+error:
+    P(ERR) << (polling ? "Poll " : "Send to ") << (_client ? "client" : "server") << " socket " << _sock
+           << " failed: " << strerror(errno);
+    return false;
 }
 
-Socket::Socket() {
+TcpSocket::TcpSocket() {
     /* Create socket for incoming connections */
+    _shutdown = false;
     if ((_sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0) {
-        perror("socket");
-        P(FTL) << "Socket failed!";
+        P(FTL) << "Socket failed: " << strerror(errno);
     }
 }
 
-void Socket::listen(int port, int max_pending, std::function<void(Connection*)>& callback) {
+void TcpSocket::bind(int port)
+{
     struct sockaddr_in server_addr;
 
     /* Construct local address structure */
@@ -93,31 +89,104 @@ void Socket::listen(int port, int max_pending, std::function<void(Connection*)>&
     /* Bind to the local address */
     if (::bind(_sock, (struct sockaddr*)&server_addr,
                 sizeof(server_addr)) < 0) {
-        perror("bind");
-        P(ERR) << "Socket " << _sock << " failed to bind on port "
-            << port << "!";
+        P(ERR) << "TcpSocket " << _sock << " failed to bind on port "
+            << port << ": " << strerror(errno);
         return;
     }
+}
 
+void Socket::listen(int max_pending, std::function<void(Connection*)>& callback) {
     /* Mark the socket so it will listen for incoming connections */
     if (::listen(_sock, max_pending) < 0) {
-        perror("bind");
-        P(ERR) << "Listen failed on server socket " << _sock << "!";
+        P(ERR) << "Listen failed on server socket " << _sock << ": " << strerror(errno);
         return;
     }
 
+    std::vector<std::thread> threads;
     void (*handle)(int) = signal (SIGPIPE, handle_SIGPIPE);
-    while (1) {
+    struct pollfd fd { _sock, POLLIN | POLLPRI };
+    while (!_shutdown) {
+        if (::poll(&fd, 1, 100) == 0) continue;
         Connection* conn = Connection::accept(_sock);
-
-        std::thread([conn, &callback] {
-            callback(conn);
-            conn->close();
-        }).detach();
+        if (conn)
+        {
+            threads.emplace_back([conn, &callback] {
+                callback(conn);
+                conn->close();
+            });
+        }
+    }
+    for (auto& thread : threads)
+    {
+        thread.join();
     }
     signal (SIGPIPE, handle);
 }
 
-Connection* Socket::connect(unsigned long addr, int port) {
-    return Connection::connect(_sock, addr, port);
+Connection* TcpSocket::connect(unsigned long addr, int port, uint64_t msec_timeout) {
+    struct sockaddr_in server_addr;
+
+    memset(&server_addr, 0, sizeof(server_addr));
+    server_addr.sin_family      = AF_INET;
+    server_addr.sin_addr.s_addr = addr;
+    server_addr.sin_port        = htons(port);
+
+    if (::connect(_sock, (struct sockaddr *) &server_addr,
+                sizeof(server_addr)) < 0) {
+        P(ERR) << "Connecting to socket " << _sock << " failed: " << strerror(errno);
+        return NULL;
+    }
+
+    return new Connection(_sock, server_addr, true);
+}
+
+UnixSocket::UnixSocket() {
+    /* Create socket for incoming connections */
+    _shutdown = false;
+    if ((_sock = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
+        P(FTL) << "Socket failed: " << strerror(errno);
+    }
+}
+
+Connection* UnixSocket::connect(const char* path, uint64_t msec_timeout) {
+    struct sockaddr_un server_addr;
+
+    bzero((char *)&server_addr,sizeof(server_addr));
+    server_addr.sun_family = AF_UNIX;
+    strcpy(server_addr.sun_path, path);
+    size_t servlen = strlen(server_addr.sun_path) + sizeof(server_addr.sun_family);
+
+    auto start = now();
+    do
+    {
+        if (::connect(_sock, (struct sockaddr *) &server_addr, servlen) >= 0) {
+            return new Connection(_sock, true);
+        }
+        usleep(10000);
+    }
+    while (now() - start < 1 * US_PER_SEC);
+
+    if (::connect(_sock, (struct sockaddr *) &server_addr, servlen) < 0) {
+        P(ERR) << "Connecting socket " << _sock << " to " << path << " failed: " << strerror(errno);
+        return NULL;
+    }
+    return new Connection(_sock, true);
+}
+
+void UnixSocket::bind(const char* path)
+{
+    /* Construct UNIX address structure */
+    struct sockaddr_un server_addr;
+    memset(&server_addr, 0, sizeof(server_addr));
+    server_addr.sun_family = AF_UNIX;
+    strcpy(server_addr.sun_path, path);
+
+    size_t servlen=strlen(server_addr.sun_path) + sizeof(server_addr.sun_family);
+
+    /* Bind to the local address */
+    if (::bind(_sock, (struct sockaddr*)&server_addr, servlen) < 0) {
+        P(ERR) << "UnixSocket " << _sock << " failed to bind on path "
+            << path << ": " << strerror(errno);
+        return;
+    }
 }

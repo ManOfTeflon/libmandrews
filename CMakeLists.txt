@@ -8,7 +8,7 @@ project(display)
 set(CMAKE_C_FLAGS "-O3 -ffast-math -g -Werror")
 set(CMAKE_CXX_FLAGS "-std=c++0x ${CMAKE_C_FLAGS}")
 
-add_library(mandrews STATIC testing.cpp socket.cpp semaphore.cpp)
+add_library(mandrews STATIC testing.cpp socket.cpp semaphore.cpp output.cpp)
 target_link_libraries(mandrews rt pthread readline)
 
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_SOURCE_DIR})

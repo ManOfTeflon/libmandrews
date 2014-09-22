@@ -29,14 +29,14 @@ namespace Tester {
 
 class Case;
 
-struct Run {
-    Run(std::initializer_list<Case*> cases);
+struct TestRun {
+    TestRun(std::initializer_list<Case*> cases);
     static bool& Parent() {
-        static bool parent = false;
         return parent;
     }
 
 private:
+    static bool parent;
     std::vector<Case*> _cases;
 };
 
@@ -63,7 +63,8 @@ public:
     virtual const char* ArgName(int i) const = 0;
     const Case& Fork(int i);
     const Case& ForkAll();
-    bool WaitAll();
+    void Begin(int args) const;
+    bool WaitAll(bool cautious = true);
     Result Finish(const TestProcess& child, Result result);
     void Succeed(uint64_t usecs);
 
@@ -159,7 +160,7 @@ typename LambdaFunc<Lambda>::func lambdaFunc(Lambda lambda) {
     CASE_(name, __VA_ARGS__)
 
 #define RUN(name) \
-    typename ::Tester::Run name = 
+    typename ::Tester::TestRun name = 
 
 #include "cases.hpp"
 

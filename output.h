@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <thread>
+#include <mutex>
 #include <readline/readline.h>
 #include <readline/history.h>
 
@@ -24,6 +25,10 @@ enum Channel { OUT, ERR, FTL, BRK, DBG, DMY, BUF };
 
 namespace logging {
 
+typedef std::mutex Lock;
+typedef std::unique_lock<std::mutex> LockGuard;
+extern Lock lock;
+
 const std::string endl = "\n";
 
 #ifndef NVERBOSE
@@ -36,7 +41,13 @@ const std::string endl = "\n";
 #define CAUTIOUS
 #endif
 
-#define V(v)  #v << ": " << v << " "
+template <typename Type>
+const char* TypeName(const Type&) {
+    const char* prefix = "const char *logging::TypeName(const Type &) ";
+    return __PRETTY_FUNCTION__ + strlen(prefix);
+}
+
+#define V(v) ::logging::TypeName(v) << #v << " = " << (v) << " "
 
 #define P(channel) ::logging::Dump(channel, __FILE__, __LINE__)
 #define PIPE(name, channel)  ::logging::Dump name(channel, __FILE__, __LINE__)
@@ -116,7 +127,7 @@ constexpr ChannelMetadata channel_map[] = {
     { ERR, &std::cerr, "\E[1;31m" },
     { FTL, &std::cerr, "\E[1;31m" },
     { BRK, &std::cerr, "\E[1;31m" },
-    { DBG, &std::cout, "\E[1;35m" },
+    { DBG, &std::cerr, "\E[1;35m" },
     { DMY, &std::cnul, "\E[0;35m" },
     { BUF, &std::cftl, "\E[0;34m" }
 };
@@ -138,6 +149,7 @@ class Choice {
  public:
   Choice<T>(const std::string& prompt, T* options, int num_options) :
       options_(options, options + num_options) {
+    LockGuard l(lock);
     std::cout << prompt << " (";
     for (int i = 0; i < num_options; ++i) {
       if (i) std::cout << "/";
@@ -238,7 +250,10 @@ class Dump {
         break;
       case DBG:
 #ifdef DEBUG
-        Output("DBG");
+        if (!getenv("NDEBUG"))
+        {
+            Output("DBG");
+        }
         break;
 #endif
       case DMY:
@@ -274,44 +289,52 @@ class Dump {
       return !expected.compare(ss_.str());
   }
 
+  static int maxTotalLength;
+  static constexpr int filenameLength = 40;
  protected:
   inline void Output(const char* prefix) {
+    LockGuard l(lock);
 #ifdef VERBOSE
-    char prompt[maxTotalLength];
-    char filename_buffer[filenameLength + 1];
-    const char* filename = Filename(filename_buffer, filenameLength + 1);
-    int written = snprintf(prompt, maxTotalLength, "%s%s (%*.*s%s)\E[0m%*s",
-            color_.c_str(), prefix, filenameLength, filenameLength,
-            filename, color_.c_str(), Indentation() * spacesPerIndent, "");
-    assert(written < maxTotalLength);
-    int real_len = written - color_.size() * 5 - 4;
-    Print(*os_, real_len, prompt);
-#else
-    char empty[] = { '\0' };
-    Printf(*os_, 0, empty);
+    if (!getenv("NVERBOSE"))
+    {
+      char prompt[maxBufferLength];
+      char filename_buffer[filenameLength + 1];
+      const char* filename = Filename(filename_buffer, filenameLength + 1);
+      int written = snprintf(prompt, maxBufferLength, "%s%s (%*.*s%s)\E[0m%*s",
+              color_.c_str(), prefix, filenameLength, filenameLength,
+              filename, color_.c_str(), Indentation() * spacesPerIndent, "");
+      assert(written < maxBufferLength);
+      int real_len = written - color_.size() * 5 - 4;
+      Print(*os_, real_len, prompt);
+      return;
+    }
 #endif
+    char empty[] = { '\0' };
+    Print(*os_, 0, empty);
   }
 
   inline void Print(std::ostream& stream, int prefix, char* prompt) {
-    const int prompt_len = strlen(prompt);
-    char buffer[maxTotalLength + 1] = { '\0' };
+      const int prompt_len = strlen(prompt);
+      char buffer[maxBufferLength + 1] = { '\0' };
 #ifdef VERBOSE
-    const std::string carat = "\E[1;32m>\E[0m ";
-    bool first = true;
-    while(ss_.get(buffer, maxTotalLength + 1, '\n').gcount()) {
-      ss_.ignore();
-      stream << prompt << carat << buffer << std::endl;
-      if (first) {
-        prompt += prompt_len - prefix;
-        memset(prompt, ' ', prefix);
-        first = false;
+      const std::string carat = "\E[1;32m>\E[0m ";
+      bool first = true;
+      const int readLen = maxTotalLength - prefix - 2;
+      bool newline = true;
+      while(ss_.get(buffer, readLen + 1, '\n').gcount()) {
+          bool wrap = strlen(buffer) == readLen;
+          if (!wrap) ss_.ignore();
+          stream << prompt << (newline ? carat : "  ") << buffer << std::endl;
+          newline = !wrap;
+          if (first) {
+              prompt += prompt_len - prefix;
+              memset(prompt, ' ', prefix);
+              first = false;
+          }
       }
-    }
+      return;
 #else
-    while(ss_.get(buffer, maxTotalLength + 1, '\n').gcount()) {
-      ss_.ignore();
-      stream << buffer << std::endl;
-    }
+      stream << ss_.str() << std::endl;
 #endif
   }
 
@@ -321,8 +344,7 @@ class Dump {
   const std::string color_;
   std::stringstream ss_;
   std::ostream* os_;
-  static constexpr int filenameLength = 40;
-  static constexpr int maxTotalLength = 128;
+  static constexpr int maxBufferLength = 1024;
   static constexpr int spacesPerIndent = 2;
 
   static inline int& Indentation() {

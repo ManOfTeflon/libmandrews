@@ -7,4 +7,6 @@ STATIC_INIT("Setting signal handlers") {
   return true;
 }
 
+bool TestRun::parent = false;
+
 }  // namespace Tester
